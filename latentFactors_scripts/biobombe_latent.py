@@ -1,3 +1,7 @@
+"""
+Original author Gregory Way 2018
+Adapted from https://github.com/greenelab/BioBombe/blob/master/scripts/latent.py
+"""
 import os
 from collections import ChainMap
 import glob
