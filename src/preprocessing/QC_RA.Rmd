@@ -1,0 +1,217 @@
+---
+title: "scRNA-seq QC strict"
+output: html_notebook
+---
+
+```{r echo=TRUE, message=FALSE}
+library(SingleCellExperiment)
+library(scater)
+library(tidyverse)
+library(ggplot2)
+library(scran)
+library(org.Hs.eg.db)
+library(data.table)
+library(gridExtra)
+library(feather)
+```
+
+This notebook aims at filtering cells by DEVIANCE, as recently proposed by [townes et al.](https://www.biorxiv.org/content/10.1101/574574v1). 
+This filtered count table will also be used by the various factorization methods that we aim to test.
+
+```{r}
+raw.molecules <- fread("./dat/RA/SDY999/ResultFiles/RNA_sequencing_result/celseq_matrix_ru10_molecules.tsv.gz", header=T, sep="\t") %>% as.data.frame()
+
+rownames(raw.molecules)<-raw.molecules$gene
+raw.molecules <- raw.molecules[,-c(1)]
+
+raw.molecules[is.na(raw.molecules)] <- 0
+
+meta <- read_tsv("./dat/RA/SDY999/ResultFiles/RNA_sequencing_result/celseq_meta.immport.723957.txt", col_types = cols()) %>% as.data.frame()
+```
+
+Single cell experiment. We use scater to build SCExperiment and QC features. Will also be used downstream for dimensionality reduction etc.
+```{r}
+meta <- dplyr::filter(meta, cell_name %in% colnames(raw.molecules))
+scset <- SingleCellExperiment(assays=list(counts=as.matrix(raw.molecules)), colData=meta)
+```
+
+perform some basic filtering steps
+```{r}
+keep_feature <- rowSums(counts(scset) > 0) > 0
+scset <- scset[keep_feature, ]
+
+is.mito <- which(grepl("MT-", rownames(scset)))
+
+ensembl <- mapIds(org.Hs.eg.db, keys=rownames(scset), keytype="SYMBOL", column="ENSEMBL")
+entrez <- mapIds(org.Hs.eg.db, keys=rownames(scset), keytype="SYMBOL", column="ENTREZID")
+
+rowData(scset)$ENSEMBL <- ensembl
+rowData(scset)$ENTREZID <- entrez
+
+scset <- calculateQCMetrics(scset, feature_controls = list(mito=is.mito))
+```
+plot some quality control data
+```{r fig.width=10}
+p1=ggplot()+
+  geom_histogram(aes(scset$total_counts), bins = 100, fill="white", colour="black")+
+  geom_vline(xintercept=1000, color="red")
+
+p2=ggplot()+
+  geom_histogram(aes(scset$total_features_by_counts), bins = 100, fill="white", colour="black")+
+  geom_vline(xintercept=100, color="red")
+
+p3=ggplot()+
+  geom_histogram(aes(scset$pct_counts_mito), bins = 20, fill="white", colour="black")+
+  geom_vline(xintercept=10, color="red")
+
+grid.arrange(p1,p2,p3, ncol = 3)
+```
+
+```{r fig.width=10}
+n_cells_mt <- sapply(seq(1:30), function(x) length(which(colData(scset)$pct_counts_mito < x))/ncol(scset))
+n_cells_libSize <- sapply(seq(1:1000), function(x) length(which(colData(scset)$total_counts > x))/ncol(scset))
+
+p1 = ggplot()+
+  geom_line(aes(x=seq(1:30), y=n_cells_mt))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
+
+p2 = ggplot()+
+  geom_line(aes(x=seq(1:1000), y=n_cells_libSize))+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10))+
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10))+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+grid.arrange(p1,p2,ncol=2)
+```
+
+let's do some filtering and see how many cells we have. 
+```{r}
+keep.cells <- colData(scset)$pct_counts_mito < 25 & colData(scset)$pct_counts_mito > 0.1
+keep.cells[is.na(keep.cells)]<-FALSE
+keep.cells.lib <- colData(scset)$total_counts > 1000
+keep.cells.genes <- colData(scset)$total_features_by_counts < 5000 & colData(scset)$total_features_by_counts > 500
+
+keep.features <- rowSums(counts(scset) >= 3) >= 3
+
+filtered_scset <- scset[keep.features,keep.cells & keep.cells.lib & keep.cells.genes]
+
+dim(filtered_scset)
+
+plotColData(
+  filtered_scset,
+  x = "total_counts",
+  y = "total_features_by_counts",
+  colour_by	= "type"
+)
+```
+
+Compute size factors and look at their distribution compared to the library size.
+This will not be used for the actual feature selection or dimensionality reduction, but might be useful for later
+```{r}
+clusters <- quickCluster(filtered_scset, min.size=0.1)
+filtered_scset <- computeSumFactors(filtered_scset, cluster=clusters, min.mean=0.1)
+
+summary(sizeFactors(filtered_scset))
+
+p1=ggplot()+geom_point(aes(x=sizeFactors(filtered_scset), y=(filtered_scset$total_counts)/1e3), shape=1, color="black", fill="white", alpha=0.2)
+
+to.keep<-filtered_scset$total_counts<3000
+
+p2=ggplot()+geom_point(aes(x=sizeFactors(filtered_scset)[to.keep], y=(filtered_scset$total_counts[to.keep])/1e3), shape=1, color="black", fill="white", alpha=0.2)
+grid.arrange(p1,p2, ncol=2)
+```
+Looks good, let's go on with the mean-variance relationship
+
+```{r}
+filtered_scset<-normalize(filtered_scset)
+
+var.fit <- trendVar(filtered_scset, parametric=TRUE, loess.args=list(span=0.4), use.spikes=FALSE)
+var.out <- decomposeVar(filtered_scset, var.fit)
+
+ggplot()+geom_point(aes(x=var.out$mean, y=var.out$total))+
+  geom_smooth(aes(x=var.out$mean, y=var.fit$trend(var.out$mean)))+
+  labs(y="variance of log-expression", x="Mean log-expression")
+```
+
+```{r fig.width=10}
+chosen.genes <- order(var.out$bio, decreasing=TRUE)[1:10]
+plotExpression(filtered_scset, rownames(var.out)[chosen.genes], 
+    point_alpha=0.05, jitter_type="jitter")
+```
+
+compute PCA on log counted data
+```{r fig.width=10}
+set.seed(1000) #requires initialization
+filtered_scset <- denoisePCA(filtered_scset, technical=var.fit$trend, approximate=TRUE, max.rank=100)
+```
+
+save the variable gene rankings
+```{r fig.width=10}
+filtered_scset@elementMetadata$var.out.bio <- var.out$bio 
+#saveRDS(filtered_scset,"./res/RA/scset_strict.rds")
+```
+
+Let's save the full object
+```{r}
+saveRDS(filtered_scset, "./res/RA/full_scset_large.rds")
+```
+
+Let's filter for genes that are present in all 3 databases
+```{r}
+keep.entrez <- !is.na(rowData(filtered_scset)$ENTREZID)
+keep.ensembl <- !is.na(rowData(filtered_scset)$ENSEMBL)
+
+genes_filtered <- filtered_scset[keep.entrez & keep.ensembl,]
+```
+
+Now, let's use the functions from Townes et al 2019 to compute the deviance and to filter genes with high deviance.
+Mode function to save deviance per genein the scset object
+```{r}
+source("./scrna2019/util/functions_genefilter.R")
+source("./scrna2019/util/functions.R")
+
+filterDev<-function(sce,nkeep=nrow(sce),dev=c("binomial","multinomial","poisson","geometric")){
+  dev<-match.arg(dev)
+  gm<-compute_gene_info(counts(sce),gmeta=rowData(sce),mod=dev)
+  o<-order(gm$deviance,decreasing=TRUE,na.last=FALSE)
+  res <- sce
+  res@elementMetadata$deviance <- gm$deviance
+  #NA deviance => badly fitting null model=> highly variable gene
+  res<-res[o[1:nkeep],]
+  res[,colSums(counts(res))>0]
+}
+
+dev_filtered_scset <- filterDev(genes_filtered, nkeep=6000, dev = "binomial")
+```
+
+Interesting
+```{r}
+p1 <- ggplot()+geom_point(aes(x=rowData(dev_filtered_scset)$log10_mean_counts, y=dev_filtered_scset@elementMetadata$var.out.bio))
+
+p2 <- ggplot()+geom_point(aes(x=dev_filtered_scset@elementMetadata$deviance, y=dev_filtered_scset@elementMetadata$var.out.bio))
+
+grid.arrange(p1,p2, nrow=1)
+```
+
+Let's save the deviance filtered
+```{r}
+rowData(dev_filtered_scset)$symbol <- rownames(dev_filtered_scset)
+saveRDS(dev_filtered_scset, "./res/RA/deviance_scset_large.rds")
+```
+
+```{r}
+write_feather(as.data.frame(t(dev_filtered_scset@assays$data$counts)), "./res/RA/deviance_counts_large.feather")
+write_feather(as.data.frame(dev_filtered_scset@colData), "./res/RA/deviance_meta_large.feather")
+write_feather(as.data.frame(rowData(dev_filtered_scset)), "./res/RA/deviance_rowdata_large.feather")
+```
+
+```{r}
+imputed.values <- fread("./res/RA/scVI_4-7-19_30latent_imputed_large.tsv", header=T, sep="\t") %>% as.data.frame()
+dev_filtered_scset <- scset
+colnames(imputed.values)<-rownames(dev_filtered_scset)
+rownames(imputed.values)<-colnames(dev_filtered_scset)
+dev_filtered_scset@assays$data$denoised <- t(imputed.values)
+```
+
+
