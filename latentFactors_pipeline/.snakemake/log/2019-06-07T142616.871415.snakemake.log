@@ -1,0 +1,70 @@
+Building DAG of jobs...
+Full Traceback (most recent call last):
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/__init__.py", line 544, in snakemake
+    export_cwl=export_cwl)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/workflow.py", line 421, in execute
+    dag.init()
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 122, in init
+    job = self.update([job], progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 628, in update
+    raise exceptions[0]
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 600, in update
+    progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 670, in update_
+    raise ex
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 663, in update_
+    progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 628, in update
+    raise exceptions[0]
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 600, in update
+    progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 670, in update_
+    raise ex
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 663, in update_
+    progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 628, in update
+    raise exceptions[0]
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 600, in update
+    progress=progress)
+  File "/home/pallagi4/miniconda3/lib/python3.6/site-packages/snakemake/dag.py", line 679, in update_
+    raise MissingInputException(job.rule, missing_input)
+snakemake.exceptions.MissingInputException: Missing input files for rule computeFactors:
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_4.rds
+
+MissingInputException in line 106 of /da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/Snakefile:
+Missing input files for rule computeFactors:
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_83_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_4.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_23_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_83_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_46_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/scvi_output/scvi_23_6.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_8.rds
+/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/output/hpf_output/hpf_46_4.rds

@@ -1,0 +1,37 @@
+{
+    "__default__" :
+    {
+        "nCPUs"     : "{threads}",
+        "memory"    : "1G",
+        "maxTime"   : "3600",
+        "name"      : "LF.{rule}.{wildcards}",
+        "output"    : "\"/your/folder/output/LOGS_AND_BENCHMARKS/{rule}.out\"",
+        "error"     : "\"/your/folder/output/LOGS_AND_BENCHMARKS/{rule}.err\"",
+        "mail"  : "your@email -m n -b n -j n"
+    },
+    "LDA":
+    {
+      "maxTime"   :"86400",
+      "memory"    : "4G"
+    },
+    "COGAPS":
+    {
+      "maxTime"   :"86400",
+      "memory"    : "4G"
+    },
+    "HPF":
+    {
+      "maxTime"   :"28800",
+      "memory"    : "4G"
+    },
+    "SCVI":
+    {
+      "maxTime"   :"28800",
+      "memory"    : "4G"
+    },
+    "computeHetnets":
+    {
+      "maxTime"   :"21600",
+      "memory"    : "4G"
+    }
+}

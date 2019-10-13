@@ -1,0 +1,3 @@
+SyntaxError:
+Not all output, log and benchmark files of rule computeFactors contain the same wildcards. This is crucial though, in order to avoid that two or more jobs write to the same file.
+  File "/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/Snakefile", line 141, in <module>

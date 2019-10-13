@@ -1,0 +1,43 @@
+{
+  "par_general":
+  {
+    "outdir"   : "./output",
+    "indir"   : "."
+  },
+
+  "input_files":
+  {
+    "counts" : "/your/counts.feather",
+    "metadata" : "/your/metadata.feather",
+    "rowdata" : "/your/rowData.feather",
+    "SCE" : "/your/SCEobject.rds"
+  },
+
+  "params":
+  {
+    "collections" : ["GpC2CPBIOCARTA","GpC2CPG","GpC2CPKEGG","GpC2CPREACTOME","GpC3TFT","GpC5BP","GpC5CC","GpC5MF","GpC7","GpH","GpMETABASER","GpWIKIPATH","GpXCELL"],
+    "seeds" : [23,46,83,55,98,36,12,63,74,8],
+    "methods" : ["cogaps", "hpf", "scvi", "lda"],
+    "latents" : [16,18,20,22,24,26,28,30,32,34,36,38,40],
+    "n_trials" : "1",
+    "n_iter"  : "7000",
+    "batch_id"  : "plate",
+    "svcca_thres" : 0.98,
+    "pythonVersion"  : ""
+  },
+
+  "scripts":
+  {
+    "lda" : "./../latentFactors_scripts/lda_run.R",
+    "cogaps" : "./../latentFactors_scripts/cogaps_run.R",
+    "scvi" : "./../latentFactors_scripts/scvi_run.py",
+    "hpf" : "./../latentFactors_scripts/hpf_run.py",
+    "collectResults" : "./../latentFactors_scripts/collectResults.R",
+    "hetnets" : "./../latentFactors_scripts/hetnetEnrich.py"
+  },
+
+  "paths":
+  {
+    "hetnets" : ""
+  }
+}

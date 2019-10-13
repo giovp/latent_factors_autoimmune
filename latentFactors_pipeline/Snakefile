@@ -1,0 +1,133 @@
+shell.executable("/bin/bash")
+shell.prefix("module load R/3.5.0-foss-2018a; ")
+
+#I/O directories
+input_dir = config["par_general"]["indir"]
+output_dir = config["par_general"]["outdir"]
+
+localrules: all
+
+###############################################################################
+##  SET SEEDS, LATENT DIMENSIONS AND GENE SET COLLECTIONS AND VARIOUS PARAMS ##
+###############################################################################
+collections = config["params"]["collections"]
+seeds = config["params"]["seeds"]
+latents = config["params"]["latents"]
+Methods = config["params"]["methods"]
+svcca_thres = config["params"]["svcca_thres"]
+
+rule all:
+    input:
+        expand("{dir}/cogaps_output/cogaps_{seed}_{k}.rds", dir=output_dir, seed=seeds, k=latents),
+        expand("{dir}/lda_output/lda_{seed}_{k}.rds", dir=output_dir, seed=seeds, k=latents),
+        expand("{dir}/scvi_output/factors_{seed}_{k}.feather", dir=output_dir, seed=seeds, k=latents, method=Methods),
+        expand("{dir}/hpf_output/factors_{seed}_{k}.feather", dir=output_dir, seed=seeds, k=latents, method=Methods),
+        expand("{dir}/hetnets_output/{method}_{k}_{set}_hetnet.feather", dir = output_dir, set=collections, k=latents, method = Methods)
+
+rule LDA:
+    input:
+        SCE = config["input_files"]["SCE"]
+    output:
+        file_output = output_dir+"/lda_output/lda_{seed}_{k}.rds"
+    params:
+        n_trials = config["params"]["n_trials"]
+    log:
+        lda_log = expand('{dir}/LOGS_AND_BENCHMARKS/lda_snakemake_{{seed}}_{{k}}.log', dir = output_dir)
+    threads: 1
+    script:
+        config["scripts"]["lda"]
+
+rule COGAPS:
+    input:
+        SCE = config["input_files"]["SCE"]
+    output:
+        file_output = output_dir+"/cogaps_output/cogaps_{seed}_{k}.rds"
+    params:
+        n_iter = config["params"]["n_iter"]
+    log:
+        cogaps_log = expand('{dir}/LOGS_AND_BENCHMARKS/cogaps_snakemake_{{seed}}_{{k}}.log', dir = output_dir)
+    threads: 3
+    script:
+        config["scripts"]["cogaps"]
+
+rule HPF:
+    input:
+        counts = config["input_files"]["counts"]
+    output:
+        cell_score = output_dir+"/hpf_output/factors_{seed}_{k}.feather",
+        gene_score = output_dir+"/hpf_output/loadings_{seed}_{k}.feather",
+        ranked_genes = output_dir+"/hpf_output/rankedGenes_{seed}_{k}.tsv.gz",
+        maximum_overlaps = output_dir+"/hpf_output/maximumOverlaps_{seed}_{k}.feather",
+        model_output = output_dir+"/hpf_output/model_{seed}_{k}.pkl",
+        metrics_output = output_dir+"/hpf_output/metrics_{seed}_{k}.feather"
+    params:
+        n_trials = config["params"]["n_trials"]
+    log:
+        hpf_log = expand('{dir}/LOGS_AND_BENCHMARKS/hpf_snakemake_{{seed}}_{{k}}.log', dir = output_dir)
+    conda:
+        "./../latentFactors_scripts/conda_envs/schpf_environment.yml"
+    threads: 1
+    script:
+        config["scripts"]["hpf"]
+
+rule SCVI:
+    input:
+        counts = config["input_files"]["counts"],
+        metadata = config["input_files"]["metadata"],
+        rowdata = config["input_files"]["rowdata"]
+    output:
+        factors = output_dir+"/scvi_output/factors_{seed}_{k}.feather",
+        loadings = output_dir+"/scvi_output/loadings_{seed}_{k}.feather",
+        model = output_dir+"/scvi_output/model_{seed}_{k}.pkl",
+        metrics = output_dir+"/scvi_output/metrics_{seed}_{k}.feather"
+    params:
+        batch_id = config["params"]["batch_id"]
+    log:
+        scvi_log = expand('{dir}/LOGS_AND_BENCHMARKS/scvi_snakemake_{{seed}}_{{k}}.log', dir = output_dir)
+    conda:
+        "./../latentFactors_scripts/conda_envs/scvi_environment.yml"
+    threads: 1
+    script:
+        config["scripts"]["scvi"]
+
+rule computeFactors:
+    input:
+        file_list_cogaps = expand("{dir}/cogaps_output/cogaps_{seed}_{{k}}.rds", dir=output_dir, seed=seeds),
+        file_list_lda = expand("{dir}/lda_output/lda_{seed}_{{k}}.rds", dir=output_dir, seed=seeds),
+        factors_list_hpf = expand("{dir}/hpf_output/factors_{seed}_{{k}}.feather", dir=output_dir, seed=seeds),
+        loadings_list_hpf = expand("{dir}/hpf_output/loadings_{seed}_{{k}}.feather", dir=output_dir, seed=seeds),
+        metrics_list_hpf = expand("{dir}/hpf_output/metrics_{seed}_{{k}}.feather", dir=output_dir, seed=seeds),
+        factors_list_scvi = expand("{dir}/scvi_output/factors_{seed}_{{k}}.feather", dir=output_dir, seed=seeds),
+        loadings_list_scvi = expand("{dir}/scvi_output/loadings_{seed}_{{k}}.feather", dir=output_dir, seed=seeds),
+        metrics_list_scvi = expand("{dir}/scvi_output/metrics_{seed}_{{k}}.feather", dir=output_dir, seed=seeds)
+    output:
+        rds_output = output_dir+"/evaluate_output/{method}_{k}.rds",
+        factors_output = output_dir+"/evaluate_output/{method}_{k}_factors.feather",
+        loadings_output = output_dir+"/evaluate_output/{method}_{k}_loadings.feather",
+        factors_output_best = output_dir+"/evaluate_output/{method}_{k}_factors_best.feather",
+        loadings_output_best = output_dir+"/evaluate_output/{method}_{k}_loadings_best.feather"
+    params:
+        svcca_threshold = svcca_thres,
+        python_vers = config["params"]["pythonVersion"]
+    log:
+        evaluate_log = expand('{dir}/LOGS_AND_BENCHMARKS/{{method}}_evaluate_snakemake_{{k}}.log', dir = output_dir)
+    threads: 1
+    script:
+        config["scripts"]["collectResults"]
+
+rule computeHetnets:
+    input:
+        loadings_best = output_dir+"/evaluate_output/{method}_{k}_loadings.feather",
+        gene_ids = config["input_files"]["rowdata"]
+    output:
+        hetnet_outputs = output_dir+"/hetnets_output/{method}_{k}_{set}_hetnet.feather"
+    params:
+        path_hetnets = config["paths"]["hetnets"],
+        metaedge = "{set}"
+    log:
+        hetnet_log = expand('{dir}/LOGS_AND_BENCHMARKS/{{method}}_hetnet_snakemake_{{set}}_{{k}}.log', dir = output_dir)
+    conda:
+        "./../latentFactors_scripts/conda_envs/biobombe_environment.yml"
+    threads: 1
+    script:
+        config["scripts"]["hetnets"]

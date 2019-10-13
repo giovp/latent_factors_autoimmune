@@ -1,0 +1,3 @@
+KeyError in line 6 of /da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/Snakefile:
+'par_general'
+  File "/da/ATI/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/latentFactors_pipeline/Snakefile", line 6, in <module>
