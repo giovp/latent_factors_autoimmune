@@ -1,5 +1,6 @@
 library(tidyverse)
 library(feather)
+library(xlsx)
 source("./latentFactors_scripts/utils.R")
 source("./latentFactors_scripts/classes.R")
 source("./src/assignLoadings/utils.R")
@@ -8,12 +9,12 @@ source("./src/Functions.R")
 
 method = "hpf"
 #load files
-loss.df <- getBestRun("./SLE_pipeline/output/evaluate_output",
-                      "SLE_pipeline",
+loss.df <- getBestRun("./RA_pipeline/output/evaluate_output",
+                      "RA_pipeline",
                       c("hpf","cogaps","scvi","lda"),
                       seq(16,40,2))
 
-path_list <- list.files(path=paste0("./SLE_pipeline/output/evaluate_output"), 
+path_list <- list.files(path=paste0("./RA_pipeline/output/evaluate_output"), 
                         pattern = paste0(method,".*.rds"), 
                         full.names = TRUE)
 
@@ -45,9 +46,9 @@ loadings_list <- sapply(path_list, function(name){
   return(latent.obj@loadings.df[,cols, with=FALSE])
 })
 
-scset <- readRDS("./res/SLEcelseq/deviance_scset_clusters_large.rds")
+scset <- readRDS("./res/RA/deviance_scset_clusters_large.rds")
 setAllFiltered <- 
-  read_feather("./SLE_pipeline/output/allSignifCollectionsFiltered.feather") %>%
+  read_feather("./RA_pipeline/output/allSignifCollectionsFiltered.feather") %>%
   dplyr::filter(method == "hpf") 
 setAllFiltered$factor <- gsub("Loading","Factor", setAllFiltered$index)
 
@@ -56,10 +57,10 @@ selectedSets <- setAllFiltered %>%
   dplyr::mutate(pval = -log10(pval)) %>%
   dplyr::rename(loading = "index") 
 
-factors.df <- getAllAllFactors("./SLE_pipeline/output/evaluate_output",
+factors.df <- getAllAllFactors("./RA_pipeline/output/evaluate_output",
                                "hpf")
 #takes long, parallelize
-allClusters <- clusterSets(selectedSets, factors.df, 10)
+allClusters <- clusterSets(selectedSets, factors.df, 4)
 
 allClusters <- allClusters %>%
   as_tibble() %>%
@@ -95,7 +96,7 @@ predictor_list <- lapply(seq(1, length(colnames(factors.dt.median.scaled))), fun
 
   response = as.data.frame(factors.dt.median.scaled[,i, drop =FALSE])
   colnames(response) <- "y"
-  response$cluster <- scset@colData$graphClusterType
+  response$cluster <- scset@colData$graphCluster
   
   mod <- lm(as.formula("y ~ 0 + cluster"), data = response)
   coeff = mod$coefficients#coef(summary(mod))[,"t value"]#mod$coefficients
@@ -107,6 +108,31 @@ predictors_all <- dplyr::bind_cols(predictor_list) %>%
   as.data.frame()
 colnames(predictors_all)<- colnames(factors.dt.median.scaled)
 rownames(predictors_all)<- names(predictor_list[[1]])
+
+wb = createWorkbook()
+collections <- allClusters$set %>% unique()
+
+for(collection in collections){
+  print(collection)
+  sheet <- createSheet(wb, collection)
+  
+  nloadings_response <- allClusters  %>%
+    dplyr::filter(set == collection) %>%
+    group_by(ont) %>%
+    tally() %>%
+    tibble::column_to_rownames(.,var = "ont")
+  
+  response_df <- predictors_all[,] %>% t() %>% as.data.frame()
+  rownames(response_df) <- colnames(predictors_all)
+  response_df <- response_df[rownames(nloadings_response ),]
+  rownames(response_df) <- gsub("GSE[0-9]*_","",rownames(response_df))
+  rownames(nloadings_response) <- gsub("GSE[0-9]*_","",rownames(nloadings_response))
+  
+  addDataFrame(response_df, sheet=sheet, startColumn=1)
+  
+}
+
+saveWorkbook(wb, "RA_all_collections.xlsx")
 
 collection="GpC7"
 #GSE[0-9]*_"
