@@ -1,3 +1,3 @@
 ## QC and preprocessing
 
-Scripts used to perform QC and preprocessing on the 2 datasets
+Scripts used to perform QC, preprocessing and clustering on the 2 datasets

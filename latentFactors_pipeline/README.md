@@ -17,7 +17,7 @@ To use this pipeline, you need to:
   * `feather` (used to have an easy format for both R and python)
   * `reticulate`   
     *Plus the Method specific packages*
-  * `CountClust` [github](https://github.com/kkdey/CountClust) and make sure to install `maptpx` also from github (it's written in the README of CountClust)
+  * `CountClust` [github](https://github.com/kkdey/CountClust) and make sure to install `maptpx` also from github
   * `CoGAPS` [github](https://github.com/FertigLab/CoGAPS)
   * `scVI` [github](https://github.com/YosefLab/scVI). The Tutorial for the linear decoder can be found [here](https://nbviewer.jupyter.org/github/YosefLab/scVI/blob/master/tests/notebooks/linear_decoder.ipynb)
   * `HPF` [github](https://github.com/simslab/scHPF)
@@ -27,11 +27,11 @@ To have a smooth start with the pipeline, create a new folder anywhere with the 
 
 ### Files
 You need several specific files to run this analysis. All files needed are listed in the `input_files` section of the `config.json` file. Here's the specifics:
-* **counts**: this is a dataframe cells (rows) v. genes (columns) of INTEGER counts. Because of method specificities, they cannot be log counts or CPM or any other format. The dataframe has to be saved in feather format
-* **metadata**: this is essentially the `SingleCellExperiment@colData` dataframe (in feather format). Here, you need couple of specific columns:
+* **counts**: dataframe cells (rows) v. genes (columns) of INTEGER counts. Because of method specificities, they cannot be log counts or CPM or any other format. The dataframe has to be saved in feather format
+* **metadata**: the `SingleCellExperiment@colData` dataframe (in feather format). Here, you need couple of specific columns:
   * `cell_name` column, with the sample ID of the cells
   * `plate` column, in case you have batches (this is mostly needed by *scVI*
-* **rowdata**: this is essentially the `rowData(SingleCellExperiment)` dataframe (in feather format). Here, you need couple of specific columns:
+* **rowdata**: the `rowData(SingleCellExperiment)` dataframe (in feather format). Here, you need couple of specific columns:
   * `ENTREZID` column, with *entrezID* for the genes
   * `symbol` column, with *symbolsID* for the genes
 * **SCE**: this is the `SingleCellExperiment` object. Here, you need to have bot counts and log counts slots, again because of specifics of the different methods.
@@ -45,4 +45,4 @@ In the `config.json` file you will find the parameters of the analysis, change t
 The pipeline requires [Snakemake](https://snakemake.readthedocs.io/en/stable/). Configuration files for parameters and cluster settings (in our case, SGE) are provided.
 
 #### Additional files
-The hetnets were pre-computed for the gene collections of interest. You might want to modify the gene set collections or generate new yourself. In that case, check [this amazing tutorial](https://github.com/greenelab/BioBombe/tree/master/3.build-hetnets) by Gregory Way.
+The hetnets were pre-computed for the gene collections of interest. You might want to modify the gene set collections or generate new yourself. In that case, check [this amazing tutorial](https://github.com/greenelab/BioBombe/tree/master/3.build-hetnets) by the original authors!
