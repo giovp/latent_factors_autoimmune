@@ -1,0 +1,452 @@
+---
+title: "Clustering"
+output: html_notebook
+---
+
+```{r setup}
+knitr::opts_knit$set(root.dir = "/da/ati/bioinformatics/projects/ATI9EDA/2018-11-05_AMP_scRNAseq_RA_LN/")
+```
+
+```{r echo=TRUE, message=FALSE}
+library(SingleCellExperiment)
+library(scater)
+library(tidyverse)
+library(ggplot2)
+library(scran)
+library(feather)
+library(umap)
+library(gridExtra)
+library(clustree)
+source("./src/Functions.R")
+```
+Let's filter cells by mitochondrial counts, at least have 1%. so to remove outliers in the following clustering stes.
+```{r}
+scset<- readRDS("./res/SLEcelseq/deviance_scset_large.rds")
+latent.scvi <- as.matrix(readr::read_tsv("./res/SLEcelseq/scVI_10-5-19_30latent_forUMAP_large.tsv"))
+colnames(latent.scvi) <- paste0("Latent", as.integer(colnames(latent.scvi))+1)
+rownames(latent.scvi) <- colnames(scset)
+scset@reducedDims$VAE <- latent.scvi
+```
+
+
+Compute UMAP
+```{r}
+set.seed(100)
+umap <- umap(scset@reducedDims$VAE, min_dist = 2, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset@reducedDims$UMAP <- umap$layout
+```
+
+```{r}
+for(i in seq(20,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+Seems that 5 cluster is consistent, Let's go for k=30. Rerun creation of scset experiment to get rid of these clusters
+
+Clustering will be performed one time and then another time for each subcluster
+```{r}
+set.seed(100)
+snn.gr <- buildSNNGraph(scset, use.dimred="VAE", k=45)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset@colData$graphCluster <- paste0("Cluster",com.graph)
+```
+```{r}
+plotUMAP(scset, "graphCluster")
+```
+Good, now we can do cell type specific cluster
+
+```{r}
+cluster1 <- scset@colData$graphCluster == "Cluster1"
+scset_cluster1 <- scset[,cluster1]
+```
+
+```{r}
+for(i in seq(20,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset_cluster1, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset_cluster1)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset_cluster1, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+There are clearly 4 clusters
+
+```{r}
+cluster1 <- scset@colData$graphCluster == "Cluster1"
+scset_cluster1 <- scset[,cluster1]
+set.seed(100)
+snn.gr <- buildSNNGraph(scset_cluster1, use.dimred="VAE", k=35)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset_cluster1@colData$graphClusterType <- paste0("Cluster",com.graph)
+```
+Do a UMAP specific for the cell subset
+```{r}
+set.seed(100)
+umap <- umap(scset_cluster1@reducedDims$VAE, min_dist = 0.001, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset_cluster1@reducedDims$UMAPtype <- umap$layout
+```
+
+```{r}
+cluster2 <- scset@colData$graphCluster == "Cluster2"
+scset_cluster2 <- scset[,cluster2]
+```
+
+```{r}
+for(i in seq(20,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset_cluster2, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset_cluster2)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset_cluster2, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+Let's stick with 4 clusters
+
+```{r}
+cluster2 <- scset@colData$graphCluster == "Cluster2"
+scset_cluster2 <- scset[,cluster2]
+set.seed(100)
+snn.gr <- buildSNNGraph(scset_cluster2, use.dimred="VAE", k=20)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset_cluster2@colData$graphClusterType <- paste0("Cluster",com.graph)
+```
+Do a UMAP specific for the cell subset
+```{r}
+set.seed(100)
+umap <- umap(scset_cluster2@reducedDims$VAE, min_dist = 0.5, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset_cluster2@reducedDims$UMAPtype <- umap$layout
+```
+
+```{r}
+cluster3 <- scset@colData$graphCluster == "Cluster3"
+scset_cluster3 <- scset[,cluster3]
+```
+
+```{r}
+for(i in seq(10,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset_cluster3, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset_cluster3)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset_cluster3, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+Interesting, let's go for 2 clusters, with k=40
+```{r}
+cluster3 <- scset@colData$graphCluster == "Cluster3"
+scset_cluster3 <- scset[,cluster3]
+set.seed(100)
+snn.gr <- buildSNNGraph(scset_cluster3, use.dimred="VAE", k=40)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset_cluster3@colData$graphClusterType <- paste0("Cluster",com.graph)
+```
+Do a UMAP specific for the cell subset
+```{r}
+set.seed(100)
+umap <- umap(scset_cluster3@reducedDims$VAE, min_dist = 0.5, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset_cluster3@reducedDims$UMAPtype <- umap$layout
+```
+plotUMAP_type(scset_cluster3, "graphClusterType")
+
+```{r}
+cluster4 <- scset@colData$graphCluster == "Cluster4"
+scset_cluster4 <- scset[,cluster4]
+```
+
+```{r}
+for(i in seq(10,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset_cluster4, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset_cluster4)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset_cluster4, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+
+```{r}
+cluster4 <- scset@colData$graphCluster == "Cluster4"
+scset_cluster4 <- scset[,cluster4]
+set.seed(100)
+snn.gr <- buildSNNGraph(scset_cluster4, use.dimred="VAE", k=30)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset_cluster4@colData$graphClusterType <- paste0("Cluster",com.graph)
+```
+Do a UMAP specific for the cell subset
+```{r}
+set.seed(100)
+umap <- umap(scset_cluster4@reducedDims$VAE, min_dist = 0.5, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset_cluster4@reducedDims$UMAPtype <- umap$layout
+```
+
+
+```{r}
+cluster5 <- scset@colData$graphCluster == "Cluster5"
+scset_cluster5 <- scset[,cluster5]
+```
+
+```{r}
+for(i in seq(10,50,5)){
+  set.seed(100)
+  snn.gr <- buildSNNGraph(scset_cluster5, use.dimred="VAE", k=i)
+  cluster.out <- igraph::cluster_louvain(snn.gr)
+  com.graph <- cluster.out$membership
+  length(unique(com.graph))
+  #colData(scset_fibro)[,paste0("k_",i,"_graphCluster")] <- paste0("Cluster",com.graph)
+  colData(scset_cluster5)[,paste0("k_",i,"_graphCluster")] <- com.graph
+  print(paste0("Finished cluster k = ",i))
+}
+```
+
+```{r}
+clustree(scset_cluster5, prefix = "k_", suffix = "_graphCluster", layout = "sugiyama")
+```
+
+```{r}
+cluster5 <- scset@colData$graphCluster == "Cluster5"
+scset_cluster5 <- scset[,cluster5]
+set.seed(100)
+snn.gr <- buildSNNGraph(scset_cluster5, use.dimred="VAE", k=30)
+cluster.out <- igraph::cluster_louvain(snn.gr)
+com.graph <- cluster.out$membership
+length(unique(com.graph))
+scset_cluster5@colData$graphClusterType <- paste0("Cluster",com.graph)
+```
+Do a UMAP specific for the cell subset
+```{r}
+set.seed(100)
+umap <- umap(scset_cluster5@reducedDims$VAE, min_dist = 0.1, random_state = 100)
+colnames(umap$layout) <- c("UMAP1", "UMAP2")
+scset_cluster5@reducedDims$UMAPtype <- umap$layout
+```
+
+
+Find marker genes
+```{r}
+cluster1_markers <- findMarkers(scset_cluster1, 
+            scset_cluster1@colData$graphClusterType, 
+            block=scset_cluster1@colData$plate, 
+            direction="up")
+scset_cluster1@metadata$markers <- cluster1_markers
+
+cluster2_markers <- findMarkers(scset_cluster2, 
+            scset_cluster2@colData$graphClusterType, 
+            block=scset_cluster2@colData$plate, 
+            direction="up")
+scset_cluster2@metadata$markers <- cluster2_markers
+
+cluster3_markers <- findMarkers(scset_cluster3, 
+            scset_cluster3@colData$graphClusterType, 
+            block=scset_cluster3@colData$plate, 
+            direction="up")
+scset_cluster3@metadata$markers <- cluster3_markers
+
+cluster4_markers <- findMarkers(scset_cluster4, 
+            scset_cluster4@colData$graphClusterType, 
+            block=scset_cluster4@colData$plate, 
+            direction="up")
+scset_cluster4@metadata$markers <- cluster4_markers
+
+cluster5_markers <- findMarkers(scset_cluster5, 
+            scset_cluster5@colData$graphClusterType, 
+            block=scset_cluster5@colData$plate, 
+            direction="up")
+scset_cluster5@metadata$markers <- cluster5_markers
+```
+
+We also need to do this for first level clusters
+```{r}
+full_markers <- findMarkers(scset, 
+            scset@colData$graphCluster, 
+            block=scset@colData$plate, 
+            direction="up")
+scset@metadata$markers <- full_markers
+```
+
+
+Let's drop the pseudobulk analysis for now, given the results from the RA dataset.
+Let's save everything and in another notebook start identifying cell populations
+
+```{r}
+saveRDS(scset, "./res/SLEcelseq/deviance_scset_markers_large.rds")
+saveRDS(scset_cluster1, "./res/SLEcelseq/scset_cluster1_large.rds")
+saveRDS(scset_cluster2, "./res/SLEcelseq/scset_cluster2_large.rds")
+saveRDS(scset_cluster3, "./res/SLEcelseq/scset_cluster3_large.rds")
+saveRDS(scset_cluster4, "./res/SLEcelseq/scset_cluster4_large.rds")
+saveRDS(scset_cluster5, "./res/SLEcelseq/scset_cluster5_large.rds")
+```
+
+Pseudobulk analysis for DE between diseases
+```{r}
+source("./src/Functions.R")
+library(edgeR)
+combos_fibro <- with(colData(scset_fibro), paste(plate, SUBJECT_ACCESSION, sep="."))
+summed_fibro <- sumCountsAcrossCells(scset_fibro, combos_fibro)
+
+combos_mono <- with(colData(scset_mono), paste(plate, SUBJECT_ACCESSION, sep="."))
+summed_mono <- sumCountsAcrossCells(scset_mono, combos_mono)
+
+combos_tcell <- with(colData(scset_tcell), paste(plate, SUBJECT_ACCESSION, sep="."))
+summed_tcell <- sumCountsAcrossCells(scset_tcell, combos_tcell)
+
+combos_bcell <- with(colData(scset_bcell), paste(plate, SUBJECT_ACCESSION, sep="."))
+summed_bcell <- sumCountsAcrossCells(scset_bcell, combos_bcell)
+```
+
+```{r}
+y_fibro <- DGEList(summed_fibro)
+y_fibro <- y_fibro[aveLogCPM(y_fibro) > 1,]
+y_fibro <- calcNormFactors(y_fibro)
+
+y_mono <- DGEList(summed_mono)
+y_mono <- y_mono[aveLogCPM(y_mono) > 1,]
+y_mono <- calcNormFactors(y_mono)
+
+y_tcell <- DGEList(summed_tcell)
+y_tcell <- y_tcell[aveLogCPM(y_tcell) > 1,]
+y_tcell <- calcNormFactors(y_tcell)
+
+y_bcell <- DGEList(summed_bcell)
+y_bcell <- y_bcell[aveLogCPM(y_bcell) > 1,]
+y_bcell <- calcNormFactors(y_bcell)
+```
+
+```{r results = 'hold'}
+sum.terms.fibro <- strsplit(colnames(y_fibro), split="\\.")
+sum.plate.fibro <- unlist(lapply(sum.terms.fibro, "[[", i=1))
+sum.donor.fibro <- unlist(lapply(sum.terms.fibro, "[[", i=2))
+sum.disease.fibro <- unique(colData(scset_fibro)[,c("SUBJECT_ACCESSION","disease")])[match(sum.donor.fibro,unique(scset_fibro@colData$SUBJECT_ACCESSION)),"disease"] 
+
+design.fibro <- model.matrix(~0 + sum.plate.fibro + sum.disease.fibro)# + sum.donor.fibro)# + sum.disease.fibro)
+
+y_fibro <- estimateDisp(y_fibro, design.fibro)
+fit.fibro <- glmQLFit(y_fibro, design.fibro, robust=TRUE)
+print("Trend dispersion")
+print(summary(y_fibro$trended.dispersion))
+print("Df prior")
+print(summary(fit.fibro$df.prior))
+#res.fibro <- glmQLFTest(fit.fibro)
+res.fibro <- glmLRT(fit.fibro)
+print("Res DE test")
+summary(decideTests(res.fibro))
+```
+
+```{r results = 'hold'}
+sum.terms.mono <- strsplit(colnames(y_mono), split="\\.")
+sum.plate.mono <- unlist(lapply(sum.terms.mono, "[[", i=1))
+sum.donor.mono <- unlist(lapply(sum.terms.mono, "[[", i=2))
+sum.disease.mono <- unique(colData(scset_mono)[,c("SUBJECT_ACCESSION","disease")])[match(sum.donor.mono,unique(scset_mono@colData$SUBJECT_ACCESSION)),"disease"] 
+
+design.mono <- model.matrix(~0 + sum.disease.mono) #+ sum.donor.mono
+
+
+y_mono <- estimateDisp(y_mono, design.mono)
+fit.mono <- glmQLFit(y_mono, design.mono, robust=TRUE)
+print("Trend dispersion")
+print(summary(y_mono$trended.dispersion))
+print("Df prior")
+print(summary(fit.mono$df.prior))  
+#res.mono <- glmQLFTest(fit.mono, coef="sum.disease.monoRA")
+res.mono <- glmLRT(fit.mono, coef="sum.disease.monoRA")
+print("Res DE test")
+summary(decideTests(res.mono))
+```
+
+```{r results = 'hold'}
+sum.terms.tcell <- strsplit(colnames(y_tcell), split="\\.")
+sum.plate.tcell <- unlist(lapply(sum.terms.tcell, "[[", i=1))
+sum.donor.tcell <- unlist(lapply(sum.terms.tcell, "[[", i=2))
+sum.disease.tcell <- unique(colData(scset_tcell)[,c("SUBJECT_ACCESSION","disease")])[match(sum.donor.tcell,unique(scset_tcell@colData$SUBJECT_ACCESSION)),"disease"] 
+
+design.tcell <- model.matrix(~0 + sum.disease.tcell) #+ sum.donor.tcell
+
+
+y_tcell <- estimateDisp(y_tcell, design.tcell)
+fit.tcell <- glmQLFit(y_tcell, design.tcell, robust=TRUE)
+print("Trend dispersion")
+print(summary(y_tcell$trended.dispersion))
+print("Df prior")
+print(summary(fit.tcell$df.prior))  
+#res.tcell <- glmQLFTest(fit.tcell, coef="sum.disease.tcellRA")
+res.tcell <- glmLRT(fit.tcell, coef="sum.disease.tcellRA")
+print("Res DE test")
+summary(decideTests(res.tcell))   
+```
+
+
+
+```{r results = 'hold'}
+sum.terms.bcell <- strsplit(colnames(y_bcell), split="\\.")
+sum.plate.bcell <- unlist(lapply(sum.terms.bcell, "[[", i=1))
+sum.donor.bcell <- unlist(lapply(sum.terms.bcell, "[[", i=2))
+sum.disease.bcell <- unique(colData(scset_bcell)[,c("SUBJECT_ACCESSION","disease")])[match(sum.donor.bcell,unique(scset_bcell@colData$SUBJECT_ACCESSION)),"disease"] 
+
+design.bcell <- model.matrix(~0 + sum.disease.bcell) #+ sum.donor.bcell
+
+
+y_bcell <- estimateDisp(y_bcell, design.bcell)
+fit.bcell <- glmQLFit(y_bcell, design.bcell, robust=TRUE)
+print("Trend dispersion")
+print(summary(y_bcell$trended.dispersion))
+print("Df prior")
+print(summary(fit.bcell$df.prior))  
+#res.bcell <- glmQLFTest(fit.bcell, coef="sum.disease.bcellRA")
+res.bcell <- glmLRT(fit.bcell, coef="sum.disease.bcellRA")
+print("Res DE test")
+summary(decideTests(res.bcell)) 
+```
+design is not complete so it does not make much sense to compute significance of DE genes
+
